@@ -1,0 +1,79 @@
+#include <SoftwareSerial.h>
+
+#define TRIG_PIN 6  
+#define ECHO_PIN 5
+#define BUZZER_PIN 2
+// TX pin for SIM800L
+#define SIM_TX 10
+// RX pin for SIM800L
+#define SIM_RX 11
+
+float newDelay;
+// Initialize software serial for SIM800L
+SoftwareSerial sim800(SIM_TX, SIM_RX);
+
+void setup()
+{
+  Serial.begin(9600);
+  // Initialize SIM800L serial communication
+  sim800.begin(9600);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  sendSMS("System initialized and ready.");
+}
+
+void loop()
+{
+  long duration, distance;
+
+  // Trigger the ultrasonic sensor
+  digitalWrite(TRIG_PIN, LOW);        
+  delayMicroseconds(2);              
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);          
+  digitalWrite(TRIG_PIN, LOW);
+
+  // Read the echo pin
+  duration = pulseIn(ECHO_PIN, HIGH);
+
+  // Calculate the distance in cm
+  distance = (duration / 2) / 29.1;
+
+  // Calculate delay based on distance
+  newDelay = (distance * 3) + 30;
+
+  // Print the distance to the serial monitor
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  // Sound the buzzer if the distance is less than 50 cm
+  if (distance < 80 && distance > 0)
+  {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(newDelay);
+    digitalWrite(BUZZER_PIN, LOW);
+    
+    sendSMS("Alert: Movement detected!");
+  }
+  else
+  {
+    digitalWrite(BUZZER_PIN, LOW);
+  }
+
+  // Small delay before the next loop
+  delay(500); 
+}
+
+void sendSMS(String message)
+{
+  sim800.print("AT+CMGF=1\r"); 
+  delay(100);
+  sim800.print("AT+CMGS=\"+1234567890\"\r");
+  delay(100);
+  sim800.print(message);
+  delay(100);
+  sim800.write(26); 
+  delay(1000);
+}
